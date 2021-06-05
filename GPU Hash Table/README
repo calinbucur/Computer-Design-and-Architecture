@@ -1,0 +1,51 @@
+Tema 3 ASC
+Calin Bucur 332CB
+
+Functia de hashing folosita este una gasita pe net.
+Mie mi se pare ca face niste operatii random pe cheia respectiva, dar pare ca merge bine si distribuie uniform valorile.
+
+Functia reshape:
+-Aloca un noua array de dimensiunea dorita in VRAM si il initializeaza cu 0 pentru a fi considerat gol.
+-Calculeaza numarul de blocuri necesare
+-Apeleaza kernelul rehash
+-Elibereaza vechiul array si il inlocuieste cu cel nou
+-Actualizeaza capacitatea
+Kernelul:
+-Calculeaza indexul si verifica sa fie in bounds
+-Calculeaza hash-ul cheii pt noul array
+-Verifica atomic daca pozitia e libera si daca da, insereaza cheia
+-Daca reuseste, insereaza si valoarea
+-Altfel, avem coliziune si se foloseste liniar probing
+-Se incearca pe rand fiecare pozitie din array si se insereaza la prima libera
+
+Functia insertBatch:
+-Verifica daca batch-ul ar incapea in array. In caz ca nu incape, dubleaza capacitatea
+-Aloca cate un array in VRAM pt chei si valori si le copiaza
+-Aloca un pointer la int in care se va actualiza nr de valori inserate
+-Apeleaza kernelul insert
+-Actualizeaza size-ul tabelei
+-Elibereaza
+Kernelul insert:
+-Deternima indexul
+-Calculeaza hash-ul cheii si pozitia
+-Verifica daca cheia deja exista caz in care actualizeaza valoarea si scade nr de inserari(acesta fiind doar un update)
+-Verifica atomic daca slotul este liber si insereaza cheia urmata de valoare
+-In caz contrar ia toate sloturile la rand incepand cu urmatorul si incearca sa insereze/actualizeze pana reuseste
+
+Functia getBatch:
+-Aloca arrays pe GPU pt chei si valori
+-Copiaza cheile
+-Apeleaza kernelul get
+-Aloca un array pt valori
+-Copiaza valorile din array-ul GPU in cel host
+-Elibereaza arrayurile GPU
+-Returneaza valorile
+Kernelul get:
+-Afla indexul
+-Calculeaza hashul/pozitia
+-Verifica daca cheie se afla acolo si seteaza valoarea de la indexul calculat la inceput
+-Altfel, ia toate campurile la rand in cautarea cheiei respective
+
+Ca load factor, teoretic el va fi intre 50% si 99%, dar in teste se ajunge la un maxim de 87%.
+
+A fost o tema interesanta. Cam ciudat de testat mai ales datorita cozii super aglomerate. Sincer pana acum ocoleam hash tables, dar acum nu mi se mai par asa horror. Ca dificultate/ main bug, am descoperit ca nu e bine sa ma dau mai destept decat ceea ce gasesc pe net in sensul ca am gasit linear probing pt coliziuni dar am decis ca in loc sa incerc inserarea de la pozitia urmatoare sa incerc mereu de la zero. VERY BAD IDEA!!! Asta insemna ca indiferent de hash toate incercau aceleasi pozitii deci o gramada de parcurgeri in plus, deci un timp spre O(n) horror :))
